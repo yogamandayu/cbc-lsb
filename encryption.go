@@ -1,7 +1,7 @@
 package cbclsb
 
 import (
-	"github.com/yogamandayu/cbc-lsb/image"
+	"cbc-lsb/image"
 	"os"
 )
 
@@ -32,28 +32,38 @@ var _ EncryptionInterface = &CBCLSB{}
 
 func (c CBCLSB) Encrypt(plaintext string, key RGBKey, file *os.File) (string, error) {
 	var err error
+
 	c.Image, err = image.NewImage(file)
 	if err != nil {
 		return "", err
 	}
-	err = c.Image.GetInitialValue()
+
+	iv, err := c.Image.GetInitialValue()
 	if err != nil {
 		return "", err
 	}
 
-	panic("implement me")
+	ivRGB := c.Image.GetPixel(iv)
+	_ = ivRGB.DecimalToBinary()
+
+	return "", nil
 }
 
 func (c CBCLSB) Decrypt(ciphertext string, key RGBKey, file *os.File) (string, error) {
 	var err error
+
 	c.Image, err = image.NewImage(file)
 	if err != nil {
 		return "", err
 	}
-	err = c.Image.GetInitialValue()
+
+	iv, err := c.Image.GetInitialValue()
 	if err != nil {
 		return "", err
 	}
 
-	panic("implement me")
+	ivRGB := c.Image.GetPixel(iv)
+	_ = ivRGB.DecimalToBinary()
+
+	return "", nil
 }

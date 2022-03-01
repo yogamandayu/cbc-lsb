@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/cbc-lsb.iml" filepath="$PROJECT_DIR$/.idea/cbc-lsb.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../github.com/yogamandayu/.idea/yogamandayu.iml" filepath="$PROJECT_DIR$/../github.com/yogamandayu/.idea/yogamandayu.iml" />
     </modules>
   </component>
 </project>

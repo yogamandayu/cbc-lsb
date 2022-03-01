@@ -2,27 +2,24 @@ package image
 
 import (
 	"image"
+	"image/jpeg"
+	"image/png"
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
 type Interface interface {
-	GetInitialValue() error
-}
-
-// RGB is an RGB struct.
-type RGB struct {
-	Red   int
-	Green int
-	Blue  int
+	GetInitialValue() (Coordinate, error)
+	GetPixel(coordinate Coordinate) *RGB
 }
 
 type Image struct {
-	File         *os.File
-	InitialValue *Coordinate
-	Properties   *Properties
+	File       *os.File
+	Pixels     [][]*RGB
+	Properties *Properties
 }
 
 type Coordinate struct {
@@ -31,12 +28,19 @@ type Coordinate struct {
 }
 
 type Properties struct {
-	Pixels [][]*RGB
 	Width  int
 	Height int
 }
 
 func NewImage(file *os.File) (*Image, error) {
+	ext := filepath.Ext(file.Name())
+	switch ext {
+	case "jpeg", "jpg":
+		image.RegisterFormat("jpeg", "jpeg", jpeg.Decode, jpeg.DecodeConfig)
+	case "png":
+		image.RegisterFormat("png", "png", png.Decode, png.DecodeConfig)
+	}
+
 	img, _, err := image.Decode(file)
 	if err != nil {
 		return nil, err
@@ -55,9 +59,9 @@ func NewImage(file *os.File) (*Image, error) {
 	}
 
 	return &Image{
-		File: file,
+		File:   file,
+		Pixels: pixels,
 		Properties: &Properties{
-			Pixels: pixels,
 			Width:  width,
 			Height: height,
 		},
@@ -75,7 +79,7 @@ func rGBAToRGB(r, g, b, a uint32) *RGB {
 	return &RGB{rx, gx, bx}
 }
 
-func (i Image) GetInitialValue() error {
+func (i Image) GetInitialValue() (Coordinate, error) {
 
 	/*
 		===============NOTES================
@@ -89,12 +93,13 @@ func (i Image) GetInitialValue() error {
 
 	var rw, cw []RGB //row weight,col weight
 	var mr, mc RGB   //mean row weight, mean col weight
+	var coordinate Coordinate
 	//var posX, posY int //x and y position for IV
 
 	log.Println("Generate initialization vector.")
 	log.Println("Generate time depends on the image size, please wait.")
 
-	px := i.Properties.Pixels
+	px := i.Pixels
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -126,11 +131,11 @@ func (i Image) GetInitialValue() error {
 			sum := math.Abs(float64(v.Red-mr.Red)) + math.Abs(float64(v.Green-mr.Green)) + math.Abs(float64(v.Blue-mr.Blue))
 			if y == 0 {
 				min = sum
-				i.InitialValue.PosY = y
+				coordinate.PosY = y
 			}
 			if sum < min {
 				min = sum
-				i.InitialValue.PosY = y
+				coordinate.PosY = y
 			}
 		}
 		wg.Done()
@@ -163,15 +168,19 @@ func (i Image) GetInitialValue() error {
 			sum := math.Abs(float64(v.Red-mc.Red)) + math.Abs(float64(v.Green-mc.Green)) + math.Abs(float64(v.Blue-mc.Blue))
 			if x == 0 {
 				min = sum
-				i.InitialValue.PosX = x
+				coordinate.PosX = x
 			}
 			if sum < min {
 				min = sum
-				i.InitialValue.PosX = x
+				coordinate.PosX = x
 			}
 		}
 		wg.Done()
 	}()
 	wg.Wait()
-	return nil
+	return coordinate, nil
+}
+
+func (i Image) GetPixel(coordinate Coordinate) *RGB {
+	return i.Pixels[coordinate.PosY][coordinate.PosX]
 }
