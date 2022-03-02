@@ -1,6 +1,7 @@
 package image
 
 import (
+	"cbc-lsb/util"
 	"image"
 	"image/jpeg"
 	"image/png"
@@ -13,6 +14,7 @@ import (
 
 type Interface interface {
 	GetInitialValue() (Coordinate, error)
+	GetNextPixel(currentCoordinate Coordinate, keyRGB *RGB, color Color) (Coordinate, error)
 	GetPixel(coordinate Coordinate) *RGB
 }
 
@@ -32,6 +34,7 @@ type Properties struct {
 	Height int
 }
 
+// NewImage is a constructor.
 func NewImage(file *os.File) (*Image, error) {
 	ext := filepath.Ext(file.Name())
 	switch ext {
@@ -70,7 +73,7 @@ func NewImage(file *os.File) (*Image, error) {
 
 var _ Interface = &Image{}
 
-// rGBAToRGB img.At(x, y).RGBA() returns four uint32 values; we want a Pixel
+// rGBAToRGB is to convert from RGBA to RGB. img.At(x, y).RGBA() returns four uint32 values; we want a Pixel
 func rGBAToRGB(r, g, b, a uint32) *RGB {
 	rx := int(r / 257)
 	gx := int(g / 257)
@@ -79,6 +82,7 @@ func rGBAToRGB(r, g, b, a uint32) *RGB {
 	return &RGB{rx, gx, bx}
 }
 
+// GetInitialValue is to get initial value coordinate from the image.
 func (i Image) GetInitialValue() (Coordinate, error) {
 
 	/*
@@ -181,6 +185,39 @@ func (i Image) GetInitialValue() (Coordinate, error) {
 	return coordinate, nil
 }
 
+func (i Image) GetNextPixel(currentCoordinate Coordinate, keyRGB *RGB, color Color) (Coordinate, error) {
+	var c string
+	var coordinate Coordinate
+
+	keyRGBBin := keyRGB.DecimalToBinary()
+	switch color {
+	case ColorRed:
+		{
+			c = keyRGBBin.Green + keyRGBBin.Blue
+		}
+	case ColorGreen:
+		{
+			c = keyRGBBin.Red + keyRGBBin.Blue
+		}
+	case ColorBlue:
+		{
+			c = keyRGBBin.Red + keyRGBBin.Green
+		}
+	}
+	sv := util.BinToInt(c)
+	sv += coordinate.PosX
+	//Sum with current column position
+	coordinate.PosY += int(math.Floor(float64(sv) / float64(i.Properties.Width))) //Get new Row position
+	//
+	//*x = sv % i.Properties.Width
+	//if *y >= i.Properties.Height{
+	//	*y = *y % i.Properties.Height //if Y is more than height, start from Row 0
+	//}
+	//newPX := (px)[int(*y)][*x]
+	panic("implement me")
+}
+
+// GetPixel is to get specific single pixel(RGB) value from the image.
 func (i Image) GetPixel(coordinate Coordinate) *RGB {
 	return i.Pixels[coordinate.PosY][coordinate.PosX]
 }
