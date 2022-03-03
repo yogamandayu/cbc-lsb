@@ -14,7 +14,7 @@ import (
 
 type Interface interface {
 	GetInitialValue() (Coordinate, error)
-	GetNextPixel(currentCoordinate Coordinate, keyRGB *RGB, color Color) (Coordinate, error)
+	GetNextPixel(currentCoordinate Coordinate, keyRGB *RGB, color Color) Coordinate
 	GetPixel(coordinate Coordinate) *RGB
 }
 
@@ -185,36 +185,36 @@ func (i Image) GetInitialValue() (Coordinate, error) {
 	return coordinate, nil
 }
 
-func (i Image) GetNextPixel(currentCoordinate Coordinate, keyRGB *RGB, color Color) (Coordinate, error) {
-	var c string
+// GetNextPixel is to get next pixel coordinate.
+func (i Image) GetNextPixel(currentCoordinate Coordinate, keyRGB *RGB, color Color) Coordinate {
+	var binary string
 	var coordinate Coordinate
 
 	keyRGBBin := keyRGB.DecimalToBinary()
 	switch color {
 	case ColorRed:
 		{
-			c = keyRGBBin.Green + keyRGBBin.Blue
+			binary = keyRGBBin.Green + keyRGBBin.Blue
 		}
 	case ColorGreen:
 		{
-			c = keyRGBBin.Red + keyRGBBin.Blue
+			binary = keyRGBBin.Red + keyRGBBin.Blue
 		}
 	case ColorBlue:
 		{
-			c = keyRGBBin.Red + keyRGBBin.Green
+			binary = keyRGBBin.Red + keyRGBBin.Green
 		}
 	}
-	sv := util.BinToInt(c)
-	sv += coordinate.PosX
-	//Sum with current column position
-	coordinate.PosY += int(math.Floor(float64(sv) / float64(i.Properties.Width))) //Get new Row position
-	//
-	//*x = sv % i.Properties.Width
-	//if *y >= i.Properties.Height{
-	//	*y = *y % i.Properties.Height //if Y is more than height, start from Row 0
-	//}
-	//newPX := (px)[int(*y)][*x]
-	panic("implement me")
+
+	totalShift := util.BinToInt(binary)
+	totalShift += currentCoordinate.PosX
+	coordinate.PosX = totalShift % i.Properties.Width
+
+	coordinate.PosY = currentCoordinate.PosY + int(math.Floor(float64(totalShift)/float64(i.Properties.Width)))
+	if coordinate.PosY >= i.Properties.Height {
+		coordinate.PosY %= i.Properties.Height
+	}
+	return coordinate
 }
 
 // GetPixel is to get specific single pixel(RGB) value from the image.

@@ -94,3 +94,38 @@ func TestImage_GetPixel(t *testing.T) {
 	})
 
 }
+
+func TestImage_GetNextPixel(t *testing.T) {
+
+	t.Run("Test with jpg image. Expected no error", func(t *testing.T) {
+
+		file := util.RootDir() + "/test/file/lenna.jpg"
+
+		f, err := os.Open(file)
+		if err != nil {
+			log.Fatal("Key image not found, place your key.jpg in same location with this file.")
+		} else {
+			fmt.Println("Key image found")
+		}
+
+		img, err := image.NewImage(f)
+		require.NoError(t, err)
+		require.NotNil(t, img)
+
+		coordinate := img.GetNextPixel(image.Coordinate{
+			PosX: 0,
+			PosY: 0,
+		}, &image.RGB{
+			Red:   34,
+			Green: 120,
+			Blue:  78,
+		}, image.ColorRed)
+		fmt.Println(img.Properties.Width)
+		fmt.Println(img.Properties.Height)
+		require.NoError(t, err)
+		assert.NotNil(t, coordinate)
+		assert.Equal(t, 78, coordinate.PosX)
+		assert.Equal(t, 60, coordinate.PosY)
+	})
+
+}

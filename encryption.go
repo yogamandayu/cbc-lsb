@@ -43,72 +43,77 @@ func (c *CBCLSB) Encrypt(plaintext string, keyRGB *RGBKey, keyImage *os.File) (s
 		return "", err
 	}
 
-	iv, err := c.Image.GetInitialValue()
+	currentCoordinate, err := c.Image.GetInitialValue()
 	if err != nil {
 		return "", err
 	}
 
-	ivBin := c.Image.GetPixel(iv).DecimalToBinary()
+	pxBin := c.Image.GetPixel(currentCoordinate).DecimalToBinary()
 
 	for _, subPt := range plaintext {
 		sBin := util.StringToBin(string(subPt))
 		arrBin := util.SplitBinTo2BitArray(sBin)
 
-		// To make output ciphertext still readable, the first 3 bit mustn't change.
-		// Example : 01010101 from this binary, the first 3 bit can't be change to 000,
-		// it will become 00010101 or 21, it's not readable character.
-
 		var prefixOK bool
+		var subCt string
 		for i, value := range arrBin {
 			if i == 0 {
 				if value == "01" {
 					prefixOK = true
 				}
-				binCipher += value
+
+				subCt += value
 				continue
 			}
-			var subCt string
+			var s string
 
 			color, size := keyRGB.GetBiggestColor()
 			rgbColorBin := util.BinLengthNormalizer(util.IntToBin(size), 8)
 
-			ivColorBin := util.BinLengthNormalizer(ivBin.GetBinaryByColor(color), 8)
+			ivColorBin := util.BinLengthNormalizer(pxBin.GetBinaryByColor(color), 8)
 			if i == 1 && !prefixOK {
-				subCt, err = util.XOR(value[1:2], rgbColorBin[7:8])
+				s, err = util.XOR(value[1:2], rgbColorBin[7:8])
 				if err != nil {
 					return "", err
 				}
 
-				subCt, err = util.XOR(subCt, ivColorBin[7:8])
+				s, err = util.XOR(s, ivColorBin[7:8])
 				if err != nil {
 					return "", err
 				}
 
-				subCt = value[0:1] + subCt
+				s = value[0:1] + s
 
-				binCipher += subCt
+				subCt += s
 
 			} else {
-				subCt, err = util.XOR(value, rgbColorBin[6:8])
+				s, err = util.XOR(value, rgbColorBin[6:8])
 				if err != nil {
 					return "", err
 				}
 
-				subCt, err = util.XOR(subCt, ivColorBin[6:8])
+				s, err = util.XOR(s, ivColorBin[6:8])
 				if err != nil {
 					return "", err
 				}
 
-				binCipher += subCt
+				subCt += s
 
 			}
-			rgbColorBin, err = util.ChangeMSB(rgbColorBin, subCt)
+
+			rgbColorBin, err = util.ChangeMSB(rgbColorBin, s)
 			if err != nil {
 				return "", err
 			}
+
 			keyRGB.SetColorValue(color, util.BinToInt(rgbColorBin))
 			keyRGB.ShiftLeftColorValue()
+
+			currentCoordinate = c.Image.GetNextPixel(currentCoordinate, &keyRGB.RGB, color)
+
+			pxBin = c.Image.GetPixel(currentCoordinate).DecimalToBinary()
 		}
+		binCipher += subCt
 	}
 
 	return util.BinToString(binCipher), nil
@@ -123,70 +128,75 @@ func (c *CBCLSB) Decrypt(ciphertext string, keyRGB *RGBKey, keyImage *os.File) (
 		return "", err
 	}
 
-	iv, err := c.Image.GetInitialValue()
+	currentCoordinate, err := c.Image.GetInitialValue()
 	if err != nil {
 		return "", err
 	}
 
-	ivBin := c.Image.GetPixel(iv).DecimalToBinary()
+	pxBin := c.Image.GetPixel(currentCoordinate).DecimalToBinary()
 
 	for _, subCt := range ciphertext {
 		sBin := util.StringToBin(string(subCt))
 		arrBin := util.SplitBinTo2BitArray(sBin)
 
-		// To make output ciphertext still readable, the first 3 bit mustn't change.
-		// Example : 01010101 from this binary, the first 3 bit can't be change to 000,
-		// it will become 00010101 or 21, it's not readable character.
-
 		var prefixOK bool
+		var subPt string
 		for i, value := range arrBin {
 			if i == 0 {
 				if value == "01" {
 					prefixOK = true
 				}
-				binPlain += value
+
+				subPt += value
 				continue
 			}
-			var subPt string
+			var s string
 
 			color, size := keyRGB.GetBiggestColor()
 			rgbColorBin := util.BinLengthNormalizer(util.IntToBin(size), 8)
 
-			ivColorBin := util.BinLengthNormalizer(ivBin.GetBinaryByColor(color), 8)
+			ivColorBin := util.BinLengthNormalizer(pxBin.GetBinaryByColor(color), 8)
 			if i == 1 && !prefixOK {
-				subPt, err = util.XOR(value[1:2], rgbColorBin[7:8])
+				s, err = util.XOR(value[1:2], ivColorBin[7:8])
 				if err != nil {
 					return "", err
 				}
 
-				subPt, err = util.XOR(subPt, ivColorBin[7:8])
+				s, err = util.XOR(s, rgbColorBin[7:8])
 				if err != nil {
 					return "", err
 				}
 
-				binPlain += value[0:1] + subPt
+				subPt += value[0:1] + s
 
 			} else {
-				subPt, err = util.XOR(value, rgbColorBin[6:8])
+				s, err = util.XOR(value, ivColorBin[6:8])
 				if err != nil {
 					return "", err
 				}
 
-				subPt, err = util.XOR(subPt, ivColorBin[6:8])
+				s, err = util.XOR(s, rgbColorBin[6:8])
 				if err != nil {
 					return "", err
 				}
 
-				binPlain += subPt
+				subPt += s
 
 			}
+
 			rgbColorBin, err = util.ChangeMSB(rgbColorBin, value)
 			if err != nil {
 				return "", err
 			}
+
 			keyRGB.SetColorValue(color, util.BinToInt(rgbColorBin))
 			keyRGB.ShiftLeftColorValue()
+
+			currentCoordinate = c.Image.GetNextPixel(currentCoordinate, &keyRGB.RGB, color)
+
+			pxBin = c.Image.GetPixel(currentCoordinate).DecimalToBinary()
 		}
+		binPlain += subPt
 	}
 
 	return util.BinToString(binPlain), nil
